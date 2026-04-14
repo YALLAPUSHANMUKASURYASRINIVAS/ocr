@@ -1,13 +1,21 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
+
 import numpy as np
 import cv2
 import tempfile
+import os
+
 from gtts import gTTS
 from deep_translator import GoogleTranslator
-from pydantic import BaseModel
 import pytesseract
+
+# =========================
+# IMPORTANT (Docker FIX)
+# =========================
+pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
 
 # =========================
 # INIT
@@ -15,7 +23,7 @@ import pytesseract
 
 app = FastAPI()
 
-# 🔥 CORS FIX (VERY IMPORTANT FOR FLUTTER WEB)
+# 🔥 CORS (Flutter Web fix)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,7 +33,7 @@ app.add_middleware(
 )
 
 # =========================
-# OCR FUNCTION (TESSERACT)
+# OCR FUNCTION
 # =========================
 
 def run_ocr(img):
@@ -33,16 +41,20 @@ def run_ocr(img):
         # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # Improve quality
+        # Improve OCR quality
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
         gray = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
+
+        # Optional: resize for better accuracy
+        gray = cv2.resize(gray, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_LINEAR)
 
         # Telugu OCR
         text = pytesseract.image_to_string(gray, lang='tel')
 
         return text.strip()
+
     except Exception as e:
-        return f"OCR Error: {e}"
+        return f"OCR Error: {str(e)}"
 
 # =========================
 # REQUEST MODEL
@@ -53,7 +65,7 @@ class TTSRequest(BaseModel):
     target_language: str
 
 # =========================
-# API ROUTES
+# ROUTES
 # =========================
 
 @app.get("/")
@@ -61,10 +73,11 @@ def home():
     return {
         "status": "running",
         "ocr": "tesseract",
-        "language": "telugu"
+        "language": "telugu",
+        "tesseract_path": pytesseract.pytesseract.tesseract_cmd
     }
 
-# 🔥 IMPORTANT (Fixes browser preflight)
+# 🔥 Preflight fix
 @app.options("/ocr-translate")
 def options_ocr():
     return {"status": "ok"}
@@ -74,6 +87,7 @@ async def ocr_translate(file: UploadFile = File(...), target_language: str = "en
     try:
         contents = await file.read()
 
+        # Decode image
         img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
 
         if img is None:
@@ -88,7 +102,7 @@ async def ocr_translate(file: UploadFile = File(...), target_language: str = "en
                 source="auto",
                 target=target_language
             ).translate(text)
-        except:
+        except Exception:
             translated = "Translation failed"
 
         return {
@@ -102,6 +116,9 @@ async def ocr_translate(file: UploadFile = File(...), target_language: str = "en
 @app.post("/tts")
 def tts(req: TTSRequest):
     try:
+        if not req.text:
+            raise HTTPException(status_code=400, detail="Text is empty")
+
         tts_audio = gTTS(text=req.text, lang=req.target_language)
 
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
