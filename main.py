@@ -23,9 +23,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Must match the exact directory used in the build step
+EASYOCR_DIR = "/opt/render/.EasyOCR"
+
 reader = easyocr.Reader(
     ['en'],
-    model_storage_directory=os.path.join(os.path.expanduser("~"), ".EasyOCR"),
+    model_storage_directory=EASYOCR_DIR,
     download_enabled=False,
     gpu=False
 )
