@@ -7,7 +7,6 @@ import tempfile
 from gtts import gTTS
 from deep_translator import GoogleTranslator
 from pydantic import BaseModel
-import easyocr
 import os
 
 # =========================
@@ -24,21 +23,22 @@ app.add_middleware(
 )
 
 EASYOCR_DIR = "/opt/render/.EasyOCR"
-os.makedirs(EASYOCR_DIR, exist_ok=True)
 
-# Check if models exist, log clearly
-craft_path = os.path.join(EASYOCR_DIR, "craft_mlt_25k.pth")
-eng_path = os.path.join(EASYOCR_DIR, "english_g2.pth")
-print(f"craft_mlt_25k.pth exists: {os.path.exists(craft_path)}")
-print(f"english_g2.pth exists: {os.path.exists(eng_path)}")
+# ⚡ LAZY LOAD — reader is created only on first OCR request
+# This prevents OOM crash on startup (Render free = 512MB)
+_reader = None
 
-# download_enabled=True so EasyOCR downloads whatever is missing at startup
-reader = easyocr.Reader(
-    ['en'],
-    model_storage_directory=EASYOCR_DIR,
-    download_enabled=True,
-    gpu=False
-)
+def get_reader():
+    global _reader
+    if _reader is None:
+        import easyocr
+        _reader = easyocr.Reader(
+            ['en'],
+            model_storage_directory=EASYOCR_DIR,
+            download_enabled=False,  # models downloaded at build time
+            gpu=False
+        )
+    return _reader
 
 # =========================
 # OCR FUNCTION
@@ -46,7 +46,7 @@ reader = easyocr.Reader(
 
 def run_ocr(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    result = reader.readtext(img)
+    result = get_reader().readtext(img)
     text = " ".join([res[1] for res in result])
     return text.strip()
 
@@ -64,7 +64,13 @@ class TTSRequest(BaseModel):
 
 @app.get("/")
 def home():
-    return {"status": "running"}
+    craft = os.path.exists(f"{EASYOCR_DIR}/craft_mlt_25k.pth")
+    eng = os.path.exists(f"{EASYOCR_DIR}/english_g2.pth")
+    return {
+        "status": "running",
+        "craft_model": craft,
+        "english_model": eng
+    }
 
 @app.post("/ocr-translate")
 async def ocr_translate(file: UploadFile = File(...), target_language: str = "en"):
