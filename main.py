@@ -8,8 +8,6 @@ from gtts import gTTS
 from deep_translator import GoogleTranslator
 from pydantic import BaseModel
 import pytesseract
-from fastapi.middleware.cors import CORSMiddleware
-
 
 # =========================
 # INIT
@@ -17,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
+# 🔥 CORS FIX (VERY IMPORTANT FOR FLUTTER WEB)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,16 +29,20 @@ app.add_middleware(
 # =========================
 
 def run_ocr(img):
-    # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    try:
+        # Convert to grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Improve text clarity
-    gray = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
+        # Improve quality
+        gray = cv2.GaussianBlur(gray, (5, 5), 0)
+        gray = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
 
-    # Telugu OCR
-    text = pytesseract.image_to_string(gray, lang='tel')
+        # Telugu OCR
+        text = pytesseract.image_to_string(gray, lang='tel')
 
-    return text.strip()
+        return text.strip()
+    except Exception as e:
+        return f"OCR Error: {e}"
 
 # =========================
 # REQUEST MODEL
@@ -50,7 +53,7 @@ class TTSRequest(BaseModel):
     target_language: str
 
 # =========================
-# API
+# API ROUTES
 # =========================
 
 @app.get("/")
@@ -61,32 +64,50 @@ def home():
         "language": "telugu"
     }
 
+# 🔥 IMPORTANT (Fixes browser preflight)
+@app.options("/ocr-translate")
+def options_ocr():
+    return {"status": "ok"}
+
 @app.post("/ocr-translate")
 async def ocr_translate(file: UploadFile = File(...), target_language: str = "en"):
-    contents = await file.read()
-
-    img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
-
-    if img is None:
-        raise HTTPException(400, "Invalid image")
-
-    # OCR
-    text = run_ocr(img)
-
-    # Translation
     try:
-        translated = GoogleTranslator(source="auto", target=target_language).translate(text)
-    except:
-        translated = "Translation failed"
+        contents = await file.read()
 
-    return {
-        "ocr_text": text,
-        "translated": translated
-    }
+        img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
+
+        if img is None:
+            raise HTTPException(status_code=400, detail="Invalid image")
+
+        # OCR
+        text = run_ocr(img)
+
+        # Translation
+        try:
+            translated = GoogleTranslator(
+                source="auto",
+                target=target_language
+            ).translate(text)
+        except:
+            translated = "Translation failed"
+
+        return {
+            "ocr_text": text,
+            "translated": translated
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/tts")
 def tts(req: TTSRequest):
-    tts_audio = gTTS(text=req.text, lang=req.target_language)
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-    tts_audio.save(tmp.name)
-    return FileResponse(tmp.name, media_type="audio/mpeg")
+    try:
+        tts_audio = gTTS(text=req.text, lang=req.target_language)
+
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        tts_audio.save(tmp.name)
+
+        return FileResponse(tmp.name, media_type="audio/mpeg")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
