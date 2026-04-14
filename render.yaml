@@ -4,19 +4,26 @@ services:
     env: python
     buildCommand: |
       pip install -r requirements.txt
-      mkdir -p models
 
-      echo "Downloading craft model..."
-      # Use gdown for reliable Google Drive downloads
-      pip install gdown
+      # Download EasyOCR models from official GitHub releases (no Google Drive)
+      MODEL_DIR="$HOME/.EasyOCR/model"
+      mkdir -p "$MODEL_DIR"
 
-      gdown "1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL" -O models/craft_mlt_25k.pth
+      echo "Downloading craft detector model..."
+      curl -L -o "$MODEL_DIR/craft_mlt_25k.zip" \
+        "https://github.com/JaidedAI/EasyOCR/releases/download/pre-v1.1.6/craft_mlt_25k.zip" \
+        && unzip -o "$MODEL_DIR/craft_mlt_25k.zip" -d "$MODEL_DIR" \
+        && rm "$MODEL_DIR/craft_mlt_25k.zip"
 
-      echo "Downloading english model..."
-      gdown "12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW" -O models/english_g2.pth
+      echo "Downloading english recognition model..."
+      curl -L -o "$MODEL_DIR/english_g2.zip" \
+        "https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/english_g2.zip" \
+        && unzip -o "$MODEL_DIR/english_g2.zip" -d "$MODEL_DIR" \
+        && rm "$MODEL_DIR/english_g2.zip"
 
-      echo "Checking files..."
-      ls -lh models
+      echo "Model files:"
+      ls -lh "$MODEL_DIR"
+
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
