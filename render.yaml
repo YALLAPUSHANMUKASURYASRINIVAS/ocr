@@ -4,9 +4,18 @@ services:
     env: python
 
     buildCommand: |
+      echo "Updating system..."
       apt-get update
+
+      echo "Installing Tesseract..."
       apt-get install -y tesseract-ocr tesseract-ocr-tel
+
+      echo "Installing Python dependencies..."
+      pip install --upgrade pip
       pip install -r requirements.txt
+
+      echo "Tesseract version:"
+      tesseract --version
 
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
 
