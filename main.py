@@ -8,6 +8,7 @@ from gtts import gTTS
 from deep_translator import GoogleTranslator
 from pydantic import BaseModel
 import easyocr
+import os
 
 # =========================
 # INIT
@@ -22,11 +23,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🔥 IMPORTANT: USE LOCAL MODELS (NO DOWNLOAD)
+# Use HOME dir for model storage so it persists and has write permission
+MODEL_DIR = os.path.join(os.path.expanduser("~"), ".EasyOCR", "model")
+os.makedirs(MODEL_DIR, exist_ok=True)
+
 reader = easyocr.Reader(
-    ['en'],   # use English model you downloaded
-    model_storage_directory='models',
-    download_enabled=False,
+    ['en'],
+    model_storage_directory=os.path.join(os.path.expanduser("~"), ".EasyOCR"),
+    download_enabled=True,   # Let EasyOCR download if models are missing
     gpu=False
 )
 
@@ -35,14 +39,9 @@ reader = easyocr.Reader(
 # =========================
 
 def run_ocr(img):
-    # Convert to RGB
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
     result = reader.readtext(img)
-
-    # Extract only text
     text = " ".join([res[1] for res in result])
-
     return text.strip()
 
 # =========================
@@ -70,10 +69,8 @@ async def ocr_translate(file: UploadFile = File(...), target_language: str = "en
     if img is None:
         raise HTTPException(400, "Invalid image")
 
-    # OCR
     text = run_ocr(img)
 
-    # Translation
     try:
         translated = GoogleTranslator(source="auto", target=target_language).translate(text)
     except:
