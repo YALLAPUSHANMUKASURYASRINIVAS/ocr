@@ -23,14 +23,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Use HOME dir for model storage so it persists and has write permission
-MODEL_DIR = os.path.join(os.path.expanduser("~"), ".EasyOCR", "model")
-os.makedirs(MODEL_DIR, exist_ok=True)
-
 reader = easyocr.Reader(
     ['en'],
     model_storage_directory=os.path.join(os.path.expanduser("~"), ".EasyOCR"),
-    download_enabled=True,   # Let EasyOCR download if models are missing
+    download_enabled=False,
     gpu=False
 )
 
@@ -63,7 +59,6 @@ def home():
 @app.post("/ocr-translate")
 async def ocr_translate(file: UploadFile = File(...), target_language: str = "en"):
     contents = await file.read()
-
     img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
 
     if img is None:
