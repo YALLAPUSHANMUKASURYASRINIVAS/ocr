@@ -11,17 +11,14 @@ services:
 
       echo "=== Downloading craft detector model ==="
       gdown --fuzzy "https://drive.google.com/file/d/1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL/view?usp=sharing" \
-        -O "$MODEL_DIR/craft_mlt_25k.pth" || echo "WARNING: craft model download failed"
+        -O "$MODEL_DIR/craft_mlt_25k.pth"
 
       echo "=== Downloading english recognition model ==="
       gdown --fuzzy "https://drive.google.com/file/d/12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW/view?usp=sharing" \
-        -O "$MODEL_DIR/english_g2.pth" || echo "WARNING: english model download failed"
+        -O "$MODEL_DIR/english_g2.pth"
 
-      echo "=== Checking model files ==="
-      ls -lh "$MODEL_DIR" || echo "WARNING: model directory is empty"
-
-      echo "=== Checking file sizes (must be > 1MB each) ==="
-      find "$MODEL_DIR" -name "*.pth" -size +1M && echo "Files look good!" || echo "ERROR: .pth files missing or too small - gdown likely failed"
+      echo "=== Model files after download ==="
+      ls -lh "$MODEL_DIR"
 
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
