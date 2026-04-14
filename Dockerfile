@@ -1,6 +1,6 @@
 FROM python:3.11
 
-# Install tesseract
+# Install Tesseract + Telugu language
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-tel \
@@ -10,7 +10,12 @@ WORKDIR /app
 
 COPY . /app
 
+# Install Python dependencies
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]
+# Expose port (important for Render)
+EXPOSE 10000
+
+# Run app (dynamic port)
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}"]
