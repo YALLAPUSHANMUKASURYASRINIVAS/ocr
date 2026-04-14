@@ -1,0 +1,218 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:audioplayers/audioplayers.dart';
+
+// 🔥 YOUR BACKEND URL
+const String API_BASE = "https://mp-uulq.onrender.com";
+
+void main() {
+  runApp(const OCRApp());
+}
+
+class OCRApp extends StatelessWidget {
+  const OCRApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Telugu OCR',
+      theme: ThemeData.dark(),
+      home: const HomeScreen(),
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  XFile? _image;
+  Uint8List? _imageBytes;
+
+  String _ocrText = "";
+  String _translatedText = "";
+  bool _loading = false;
+
+  final picker = ImagePicker();
+  final player = AudioPlayer();
+
+  String _selectedLang = "en";
+
+  final Map<String, String> langs = {
+    "English": "en",
+    "Hindi": "hi",
+    "Telugu": "te",
+  };
+
+  // 📸 Pick Image
+  Future<void> pick(ImageSource src) async {
+    final img = await picker.pickImage(source: src);
+    if (img == null) return;
+
+    final bytes = await img.readAsBytes();
+
+    setState(() {
+      _image = img;
+      _imageBytes = bytes;
+      _ocrText = "";
+      _translatedText = "";
+    });
+
+    runOCR();
+  }
+
+  // 🔥 OCR + Translate
+  Future<void> runOCR() async {
+    if (_imageBytes == null) return;
+
+    setState(() => _loading = true);
+
+    try {
+      final uri = Uri.parse("$API_BASE/ocr-translate?target_language=$_selectedLang");
+
+      final request = http.MultipartRequest("POST", uri);
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          "file",
+          _imageBytes!,
+          filename: "image.jpg",
+        ),
+      );
+
+      final res = await request.send();
+      final body = await http.Response.fromStream(res);
+
+      print(body.body); // DEBUG
+
+      if (body.statusCode == 200) {
+        final data = jsonDecode(body.body);
+
+        setState(() {
+          _ocrText = data["ocr_text"] ?? "";
+          _translatedText = data["translated"] ?? "";
+        });
+      } else {
+        setState(() {
+          _ocrText = "Error: ${body.statusCode}";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _ocrText = "Connection error: $e";
+      });
+    }
+
+    setState(() => _loading = false);
+  }
+
+  // 🔊 TTS
+  Future<void> playTTS() async {
+    if (_translatedText.isEmpty) return;
+
+    final res = await http.post(
+      Uri.parse("$API_BASE/tts"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "text": _translatedText,
+        "target_language": _selectedLang
+      }),
+    );
+
+    if (res.statusCode == 200) {
+      final bytes = res.bodyBytes;
+      await player.play(BytesSource(bytes));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Telugu OCR")),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // IMAGE
+            Container(
+              height: 200,
+              color: Colors.black26,
+              child: _imageBytes == null
+                  ? const Center(child: Text("No Image"))
+                  : Image.memory(_imageBytes!, fit: BoxFit.cover),
+            ),
+
+            const SizedBox(height: 10),
+
+            // BUTTONS
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => pick(ImageSource.gallery),
+                    child: const Text("Gallery"),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => pick(ImageSource.camera),
+                    child: const Text("Camera"),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // LANGUAGE
+            DropdownButton<String>(
+              value: _selectedLang,
+              isExpanded: true,
+              items: langs.entries
+                  .map((e) => DropdownMenuItem(
+                        value: e.value,
+                        child: Text(e.key),
+                      ))
+                  .toList(),
+              onChanged: (v) {
+                if (v == null) return;
+                setState(() => _selectedLang = v);
+              },
+            ),
+
+            const SizedBox(height: 10),
+
+            if (_loading) const CircularProgressIndicator(),
+
+            // OCR TEXT
+            if (_ocrText.isNotEmpty)
+              Text("OCR: $_ocrText"),
+
+            const SizedBox(height: 10),
+
+            // TRANSLATION
+            if (_translatedText.isNotEmpty)
+              Column(
+                children: [
+                  Text("Translation: $_translatedText"),
+                  IconButton(
+                    onPressed: playTTS,
+                    icon: const Icon(Icons.volume_up),
+                  )
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
