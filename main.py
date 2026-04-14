@@ -23,13 +23,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Must match the exact directory used in the build step
 EASYOCR_DIR = "/opt/render/.EasyOCR"
+os.makedirs(EASYOCR_DIR, exist_ok=True)
 
+# Check if models exist, log clearly
+craft_path = os.path.join(EASYOCR_DIR, "craft_mlt_25k.pth")
+eng_path = os.path.join(EASYOCR_DIR, "english_g2.pth")
+print(f"craft_mlt_25k.pth exists: {os.path.exists(craft_path)}")
+print(f"english_g2.pth exists: {os.path.exists(eng_path)}")
+
+# download_enabled=True so EasyOCR downloads whatever is missing at startup
 reader = easyocr.Reader(
     ['en'],
     model_storage_directory=EASYOCR_DIR,
-    download_enabled=False,
+    download_enabled=True,
     gpu=False
 )
 
