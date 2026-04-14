@@ -7,10 +7,13 @@ services:
       mkdir -p models
 
       echo "Downloading craft model..."
-      curl -L -o models/craft_mlt_25k.pth "https://drive.google.com/file/d/1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL/view?usp=sharing"
+      # Use gdown for reliable Google Drive downloads
+      pip install gdown
+
+      gdown "1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL" -O models/craft_mlt_25k.pth
 
       echo "Downloading english model..."
-      curl -L -o models/english_g2.pth "https://drive.google.com/file/d/12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW/view?usp=sharing"
+      gdown "12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW" -O models/english_g2.pth
 
       echo "Checking files..."
       ls -lh models
