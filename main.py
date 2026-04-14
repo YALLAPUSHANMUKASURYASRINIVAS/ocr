@@ -22,15 +22,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load EasyOCR model (Telugu)
-reader = easyocr.Reader(['te'], gpu=False)
+# 🔥 IMPORTANT: USE LOCAL MODELS (NO DOWNLOAD)
+reader = easyocr.Reader(
+    ['en'],   # use English model you downloaded
+    model_storage_directory='models',
+    download_enabled=False,
+    gpu=False
+)
 
 # =========================
 # OCR FUNCTION
 # =========================
 
 def run_ocr(img):
-    # Convert to RGB (EasyOCR expects RGB)
+    # Convert to RGB
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     result = reader.readtext(img)
