@@ -9,16 +9,19 @@ services:
       MODEL_DIR="/opt/render/.EasyOCR"
       mkdir -p "$MODEL_DIR"
 
-      echo "Downloading craft detector model..."
+      echo "=== Downloading craft detector model ==="
       gdown --fuzzy "https://drive.google.com/file/d/1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL/view?usp=sharing" \
-        -O "$MODEL_DIR/craft_mlt_25k.pth"
+        -O "$MODEL_DIR/craft_mlt_25k.pth" || echo "WARNING: craft model download failed"
 
-      echo "Downloading english recognition model..."
+      echo "=== Downloading english recognition model ==="
       gdown --fuzzy "https://drive.google.com/file/d/12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW/view?usp=sharing" \
-        -O "$MODEL_DIR/english_g2.pth"
+        -O "$MODEL_DIR/english_g2.pth" || echo "WARNING: english model download failed"
 
-      echo "Model files:"
-      ls -lh "$MODEL_DIR"
+      echo "=== Checking model files ==="
+      ls -lh "$MODEL_DIR" || echo "WARNING: model directory is empty"
+
+      echo "=== Checking file sizes (must be > 1MB each) ==="
+      find "$MODEL_DIR" -name "*.pth" -size +1M && echo "Files look good!" || echo "ERROR: .pth files missing or too small - gdown likely failed"
 
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
