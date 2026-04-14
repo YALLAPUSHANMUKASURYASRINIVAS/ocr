@@ -7,10 +7,10 @@ services:
       mkdir -p models
 
       echo "Downloading craft model..."
-      curl -L -o models/craft_mlt_25k.pth "https://drive.google.com/uc?export=download&id=1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL"
+      curl -L -o models/craft_mlt_25k.pth "https://drive.google.com/file/d/1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL/view?usp=sharing"
 
       echo "Downloading english model..."
-      curl -L -o models/english_g2.pth "https://drive.google.com/uc?export=download&id=12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW"
+      curl -L -o models/english_g2.pth "https://drive.google.com/file/d/12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW/view?usp=sharing"
 
       echo "Checking files..."
       ls -lh models
