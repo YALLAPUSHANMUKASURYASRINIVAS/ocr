@@ -5,8 +5,8 @@ services:
     buildCommand: |
       pip install -r requirements.txt
       mkdir -p models
-      wget https://drive.google.com/uc?export=download&id=1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL -O models/craft_mlt_25k.pth
-      wget https://drive.google.com/uc?export=download&id=12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW -O models/english_g2.pth
+      curl -L "https://drive.google.com/uc?export=download&id=1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL" -o models/craft_mlt_25k.pth
+      curl -L "https://drive.google.com/uc?export=download&id=12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW" -o models/english_g2.pth
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
