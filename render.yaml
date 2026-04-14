@@ -6,7 +6,7 @@ services:
       pip install -r requirements.txt
       pip install gdown
 
-      MODEL_DIR="$HOME/.EasyOCR/model"
+      MODEL_DIR="/opt/render/.EasyOCR"
       mkdir -p "$MODEL_DIR"
 
       echo "Downloading craft detector model..."
