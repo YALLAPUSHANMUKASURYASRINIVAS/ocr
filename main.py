@@ -7,7 +7,11 @@ import tempfile
 from gtts import gTTS
 from deep_translator import GoogleTranslator
 from pydantic import BaseModel
-import pytesseract
+import easyocr
+
+# =========================
+# INIT
+# =========================
 
 app = FastAPI()
 
@@ -18,16 +22,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Load EasyOCR model (Telugu)
+reader = easyocr.Reader(['te'], gpu=False)
+
 # =========================
-# OCR USING TESSERACT
+# OCR FUNCTION
 # =========================
 
 def run_ocr(img):
-    # Improve accuracy
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
+    # Convert to RGB (EasyOCR expects RGB)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    text = pytesseract.image_to_string(gray, lang='tel')
+    result = reader.readtext(img)
+
+    # Extract only text
+    text = " ".join([res[1] for res in result])
+
     return text.strip()
 
 # =========================
@@ -55,8 +65,10 @@ async def ocr_translate(file: UploadFile = File(...), target_language: str = "en
     if img is None:
         raise HTTPException(400, "Invalid image")
 
+    # OCR
     text = run_ocr(img)
 
+    # Translation
     try:
         translated = GoogleTranslator(source="auto", target=target_language).translate(text)
     except:
