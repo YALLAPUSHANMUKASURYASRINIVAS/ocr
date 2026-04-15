@@ -5,20 +5,22 @@ services:
     buildCommand: |
       pip install -r requirements.txt
       pip install gdown
-
       MODEL_DIR="/opt/render/.EasyOCR"
       mkdir -p "$MODEL_DIR"
 
       echo "=== Downloading craft detector model ==="
-      gdown --fuzzy "https://drive.google.com/file/d/1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL/view?usp=sharing" \
-        -O "$MODEL_DIR/craft_mlt_25k.pth"
+      gdown "https://drive.google.com/uc?id=1o-zrNO7WvHNrj2v5QGlJJ-VN7s-RHCAL" \
+        -O "$MODEL_DIR/craft_mlt_25k.pth" || exit 1
 
       echo "=== Downloading english recognition model ==="
-      gdown --fuzzy "https://drive.google.com/file/d/12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW/view?usp=sharing" \
-        -O "$MODEL_DIR/english_g2.pth"
+      gdown "https://drive.google.com/uc?id=12wfZGSLVXDqSwLjjAoUqBuCDo87xRKOW" \
+        -O "$MODEL_DIR/english_g2.pth" || exit 1
 
-      echo "=== Model files after download ==="
+      echo "=== Verifying models ==="
       ls -lh "$MODEL_DIR"
+      [ -f "$MODEL_DIR/craft_mlt_25k.pth" ] && [ $(stat -c%s "$MODEL_DIR/craft_mlt_25k.pth") -gt 1000000 ] || exit 1
+      [ -f "$MODEL_DIR/english_g2.pth" ] && [ $(stat -c%s "$MODEL_DIR/english_g2.pth") -gt 1000000 ] || exit 1
+      echo "=== Models OK ==="
 
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
